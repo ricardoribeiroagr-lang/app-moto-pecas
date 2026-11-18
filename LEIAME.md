@@ -30,6 +30,25 @@ Marque **Auto Confirm User** para que a pessoa já consiga entrar.
 
 Para atualizar o app no futuro, abra o site na Netlify, vá em **Deploys** e arraste a pasta `app` de novo.
 
+## Catálogo pelo app (administrador)
+
+Entrando com **ricardoribeiro94@hotmail.com**, aparece o botão **Catálogo** no topo. Por ele você:
+- cadastra peças e serviços, muda preço e horas de mão de obra e desativa o que não usa;
+- cadastra modelos de moto e o ajuste de preço de cada um;
+- define o valor padrão da hora e do km de deslocamento.
+
+Os outros usuários veem e usam os preços, mas não alteram. Para incluir outro administrador, rode no SQL Editor do Supabase:
+`insert into admins (email) values ('email@exemplo.com');`
+
+## Instalar no celular
+
+- **Android / computador (Chrome ou Edge):** toque em **Instalar app** no topo do app (ou no menu ⋮ → Instalar app).
+- **iPhone (Safari):** Compartilhar → **Adicionar à Tela de Início**.
+
+## Atualizações
+
+O site na Netlify está ligado ao GitHub (repositório privado `app-moto-pecas`). Toda alteração enviada ao repositório é publicada sozinha.
+
 ## Ajustes do dia a dia
 
 - **Preços e serviços:** Supabase → **Table Editor → catalogo**. `preco` é o preço da peça no modelo base (CG 160) e `horas` é a mão de obra. Para tirar um serviço do app sem apagar o histórico, marque `ativo = false`.

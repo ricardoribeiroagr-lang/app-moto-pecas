@@ -8,6 +8,9 @@
 <meta name="theme-color" content="#e3262f">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Oficina MPF">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -50,6 +53,14 @@ button:disabled{opacity:.5;cursor:wait}
 .tot .big{font:700 34px/1.1 "Barlow Condensed",sans-serif;margin-top:4px;color:var(--redink)}
 .acts{display:flex;gap:8px;flex-wrap:wrap}.acts>*{flex:1 1 140px}
 fieldset.desl{border:1px solid var(--line);border-radius:10px;padding:8px 12px 12px;margin:0 0 12px}fieldset.desl legend{font:600 14px Barlow,sans-serif;padding:0 6px}
+.admin .card{margin-top:16px}.admin h3{font-size:22px;margin-bottom:10px}
+.adm-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.adm-head h2{margin:0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:10px;align-items:end}
+.addrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:10px;align-items:end;margin-bottom:14px}
+.filt{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}.filt>*{flex:1 1 180px}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}.chk input{width:22px;min-height:22px}
+.admt input{min-height:40px;padding:6px 8px}.admt td{vertical-align:middle}.admt .n{max-width:120px}
+.admt tr.off td{opacity:.55}.admt button{min-height:40px;padding:0 12px}
 .note{font-size:13px;color:var(--mut);margin:6px 0 0}
 .band{padding:clamp(28px,4vw,48px) max(3vw,16px)}
 .band h2{font-size:32px;margin-bottom:14px}
@@ -83,6 +94,7 @@ td .acts{gap:6px;flex-wrap:nowrap}td .acts button{min-height:40px;padding:0 10px
     <button class="red" id="btnLogin">Entrar</button>
     <p class="err" id="loginErr"></p>
     <button type="button" class="ghost" id="btnEsqueci">Primeiro acesso ou esqueci a senha</button>
+    <button type="button" class="ghost instalar" id="btnInstalar2" hidden>Instalar o app no celular</button>
   </form>
 </section>
 
@@ -100,9 +112,9 @@ td .acts{gap:6px;flex-wrap:nowrap}td .acts button{min-height:40px;padding:0 10px
 
 <!-- ================= APP ================= -->
 <div id="appView" hidden>
-<header class="top"><h1>Oficina Pista</h1><span id="userTag"></span><button id="sair">Sair</button></header>
+<header class="top"><h1>Oficina Pista</h1><span id="userTag"></span><button id="btnInstalar" class="instalar" hidden>Instalar app</button><button id="btnAdmin" hidden>Catálogo</button><button id="sair">Sair</button></header>
 
-<main class="app">
+<main class="app" id="mainApp">
   <section class="stage" aria-label="Moto 3D">
     <div id="view"></div>
     <div id="tip"></div>
@@ -145,9 +157,54 @@ td .acts{gap:6px;flex-wrap:nowrap}td .acts button{min-height:40px;padding:0 10px
   </aside>
 </main>
 
-<section class="band">
+<section class="band" id="osBand">
   <h2>Ordens de serviço</h2>
   <div class="scroll"><table class="stack" id="osT"><thead><tr><th>OS</th><th>Data</th><th>Cliente</th><th>Moto</th><th>Itens</th><th style="text-align:right">Total</th><th>Status</th><th>Enviar</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<!-- ================= ADMINISTRAÇÃO (só o administrador vê) ================= -->
+<section class="band admin" id="adminView" hidden>
+  <div class="adm-head"><h2>Catálogo e preços</h2><button class="ghost" id="admVoltar">Voltar ao orçamento</button></div>
+  <p class="note">Só o administrador altera estes dados. As mudanças valem para os próximos orçamentos; OS já criadas guardam o preço da época.</p>
+
+  <div class="card">
+    <h3>Valores padrão</h3>
+    <div class="grid3">
+      <label>Hora de mão de obra (R$)<input id="cfgHora" type="number" min="0" step="1" inputmode="decimal"></label>
+      <label>Km de deslocamento (R$)<input id="cfgKm" type="number" min="0" step="0.1" inputmode="decimal"></label>
+      <button class="red" id="cfgSalvar">Salvar valores</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Peças e serviços</h3>
+    <form id="novoServ" class="addrow">
+      <label>Peça<select id="nsPeca"></select></label>
+      <label id="nsOutraL" hidden>Nome da peça<input id="nsOutra" placeholder="Ex.: Carburador"></label>
+      <label>Serviço<input id="nsServ" required placeholder="Ex.: Troca do pneu"></label>
+      <label>Preço da peça (R$)<input id="nsPreco" type="number" min="0" step="0.01" inputmode="decimal" value="0"></label>
+      <label>Mão de obra (horas)<input id="nsHoras" type="number" min="0" step="0.1" inputmode="decimal" value="0"></label>
+      <button class="red">+ Adicionar serviço</button>
+    </form>
+    <div class="filt">
+      <select id="fPeca" aria-label="Filtrar por peça"></select>
+      <input id="fBusca" placeholder="Buscar serviço…" aria-label="Buscar serviço">
+      <label class="chk"><input type="checkbox" id="fInativos"> Mostrar desativados</label>
+    </div>
+    <div class="scroll"><table class="stack admt" id="tCat"><thead><tr><th>Peça</th><th>Serviço</th><th>Preço peça (R$)</th><th>M.O. (h)</th><th>Ativo</th><th></th></tr></thead><tbody></tbody></table></div>
+    <p class="note">O preço da peça é o do modelo base (ajuste 1,00). Para os outros modelos, o app multiplica pelo ajuste de cada um. Peças fora da lista da moto 3D aparecem só na lista de peças, não na moto.</p>
+  </div>
+
+  <div class="card">
+    <h3>Modelos de moto</h3>
+    <form id="novoMod" class="addrow">
+      <label>Modelo<input id="nmNome" required placeholder="Ex.: Honda Pop 110"></label>
+      <label>Ajuste de preço<input id="nmMult" type="number" min="0.1" step="0.05" inputmode="decimal" value="1"></label>
+      <button class="red">+ Adicionar modelo</button>
+    </form>
+    <div class="scroll"><table class="stack admt" id="tMod"><thead><tr><th>Modelo</th><th>Ajuste</th><th></th></tr></thead><tbody></tbody></table></div>
+    <p class="note">Ajuste 1,00 = preço base. 1,35 = peças 35% mais caras. 0,85 = 15% mais baratas.</p>
+  </div>
 </section>
 </div>
 <div id="sheet" role="dialog" aria-modal="false" aria-labelledby="shT" hidden>
@@ -208,7 +265,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{flowType:'i
 let precisaSenha=TIPO_LINK==='invite'||TIPO_LINK==='recovery';
 
 /* ---------- estado ---------- */
-let P={},CAT={},MODELS={},OS=[],built=false;
+let P={},CAT={},MODELS={},OS=[],built=false,CONFIG=null,cfgAplicada=false,ADMIN=false,canal=null;
 let st={sel:null,placa:'',cli:'',tel:'',modelo:'',km:'',rate:VALOR_HORA_PADRAO,dkm:'',dvkm:VALOR_KM_PADRAO,items:[]};   // items: {cid,q}
 try{const s=JSON.parse(localStorage.getItem('pista-rascunho'));if(s)st={...st,...s,sel:null}}catch(e){}
 const save=()=>{try{localStorage.setItem('pista-rascunho',JSON.stringify(st))}catch(e){}};
@@ -231,6 +288,8 @@ async function show(session){
   if(!session)return;
   $('#userTag').textContent=session.user.email;
   try{await loadData()}catch(e){toast('Erro ao carregar dados: '+e.message);return}
+  try{const {data}=await sb.rpc('is_admin');ADMIN=data===true}catch(e){ADMIN=false}
+  $('#btnAdmin').hidden=!ADMIN;
   if(!built){built=true;try{build()}catch(e){noView()}}
 }
 $('#senhaForm').addEventListener('submit',async e=>{
@@ -258,10 +317,14 @@ $('#sair').addEventListener('click',()=>sb.auth.signOut());
 
 /* ---------- dados ---------- */
 async function loadData(){
-  const [m,c]=await Promise.all([
+  const [m,c,g]=await Promise.all([
     sb.from('modelos').select('*').order('nome'),
-    sb.from('catalogo').select('*').eq('ativo',true).order('peca_nome').order('ordem')]);
+    sb.from('catalogo').select('*').eq('ativo',true).order('peca_nome').order('ordem'),
+    sb.from('config').select('*').maybeSingle()]);
   if(m.error)throw m.error;if(c.error)throw c.error;
+  CONFIG=g.error?null:g.data;
+  // valores padrão do administrador entram no primeiro orçamento da sessão (cada orçamento ainda pode mudar)
+  if(CONFIG&&!cfgAplicada){cfgAplicada=true;st.rate=+CONFIG.valor_hora;st.dvkm=+CONFIG.valor_km}
   MODELS={};m.data.forEach(r=>MODELS[r.id]=r);
   P={};CAT={};c.data.forEach(r=>{CAT[r.id]=r;(P[r.peca_id]??={n:r.peca_nome,o:[]}).o.push(r)});
   st.items=st.items.filter(i=>CAT[i.cid]);
@@ -270,7 +333,7 @@ async function loadData(){
   $('#partSel').innerHTML='<option value="">Ou escolha a peça na lista…</option>'+Object.entries(P).map(([k,v])=>`<option value="${esc(k)}">${esc(v.n)}</option>`).join('');
   [['placa','placa'],['cli','cli'],['tel','tel'],['modelo','modelo'],['km','km'],['rate','rate'],['dkm','dkm'],['dvkm','dvkm']].forEach(([id,k])=>$('#'+id).value=st[k]);
   renderQuote();await loadOS();
-  sb.channel('os').on('postgres_changes',{event:'*',schema:'public',table:'ordens_servico'},()=>loadOS()).subscribe();
+  if(!canal)canal=sb.channel('os').on('postgres_changes',{event:'*',schema:'public',table:'ordens_servico'},()=>loadOS()).subscribe();
 }
 
 async function loadOS(){
@@ -536,6 +599,117 @@ function abrirFolha(id,t,p,btns){
 }
 function fechaFolha(){$('#sheet').hidden=true}
 addEventListener('keydown',e=>{if(e.key==='Escape')fechaFolha()});
+
+/* ---------- app instalável (tela inicial do celular / computador) ---------- */
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+const instalado=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const ehIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let pedidoInstalar=null;
+const mostrarInstalar=v=>{$('#btnInstalar').hidden=!v;$('#btnInstalar2').hidden=!v};
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();pedidoInstalar=e;if(!instalado)mostrarInstalar(true)});
+addEventListener('appinstalled',()=>{pedidoInstalar=null;mostrarInstalar(false);toast('App instalado')});
+if(ehIOS&&!instalado)mostrarInstalar(true);
+async function instalar(){
+  if(pedidoInstalar){pedidoInstalar.prompt();await pedidoInstalar.userChoice.catch(()=>{});pedidoInstalar=null;return}
+  if(ehIOS)return abrirFolha(0,'Instalar no iPhone','No Safari: toque em Compartilhar (quadrado com seta para cima) e depois em "Adicionar à Tela de Início".',[]);
+  abrirFolha(0,'Instalar o app','No Chrome ou Edge: abra o menu ⋮ e escolha "Instalar app" ou "Adicionar à tela inicial".',[]);
+}
+$('#btnInstalar').addEventListener('click',instalar);$('#btnInstalar2').addEventListener('click',instalar);
+
+/* ---------- administração do catálogo ---------- */
+// peças que existem na moto 3D (nomes dos objetos do moto.glb)
+const PARTES_3D={pneu_dianteiro:'Pneu dianteiro',pneu_traseiro:'Pneu traseiro',freio_dianteiro:'Freio dianteiro (disco)',freio_traseiro:'Freio traseiro (tambor)',
+  motor:'Motor',kit_relacao:'Kit relação',escapamento:'Escapamento',suspensao_dianteira:'Suspensão dianteira',amortecedor_traseiro:'Amortecedores traseiros',
+  farol:'Farol',lanterna:'Lanterna traseira',bateria:'Bateria (tampa lateral)',tanque:'Tanque',banco:'Banco',guidao:'Guidão e comandos',retrovisores:'Retrovisores',quadro:'Quadro e balança'};
+const slug=t=>String(t).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+const n2=v=>Math.max(parseFloat(String(v??'').replace(',','.'))||0,0);
+let ADM={cat:[],mod:[]};
+function abrirAdmin(on){
+  $('#adminView').hidden=!on;$('#mainApp').hidden=on;$('#osBand').hidden=on;
+  $('#btnAdmin').textContent=on?'Orçamento':'Catálogo';
+  if(on){carregarAdmin();scrollTo(0,0)}
+}
+$('#btnAdmin').addEventListener('click',()=>abrirAdmin($('#adminView').hidden));
+$('#admVoltar').addEventListener('click',()=>abrirAdmin(false));
+async function carregarAdmin(){
+  const [c,m,g]=await Promise.all([
+    sb.from('catalogo').select('*').order('peca_nome').order('ordem').order('id'),
+    sb.from('modelos').select('*').order('nome'),
+    sb.from('config').select('*').maybeSingle()]);
+  if(c.error||m.error)return toast('Erro ao carregar o catálogo');
+  ADM={cat:c.data,mod:m.data};
+  if(g.error)toast('Valores padrão indisponíveis: rode a migração 02 no Supabase');
+  else if(g.data){$('#cfgHora').value=g.data.valor_hora;$('#cfgKm').value=g.data.valor_km}
+  // peças: as da moto 3D + as que já existem no catálogo
+  const pecas={...PARTES_3D};c.data.forEach(r=>{pecas[r.peca_id]??=r.peca_nome});
+  const ops=Object.entries(pecas).sort((a,b)=>a[1].localeCompare(b[1],'pt'));
+  const sel=$('#nsPeca').value;
+  $('#nsPeca').innerHTML=ops.map(([k,v])=>`<option value="${esc(k)}">${esc(v)}${PARTES_3D[k]?'':' (sem 3D)'}</option>`).join('')+'<option value="__nova">Outra peça…</option>';
+  if(sel)$('#nsPeca').value=sel;
+  const f=$('#fPeca').value;
+  $('#fPeca').innerHTML='<option value="">Todas as peças</option>'+ops.filter(([k])=>c.data.some(r=>r.peca_id===k)).map(([k,v])=>`<option value="${esc(k)}">${esc(v)}</option>`).join('');
+  $('#fPeca').value=f;
+  renderCat();renderMod();
+}
+function renderCat(){
+  const fp=$('#fPeca').value,fb=$('#fBusca').value.trim().toLowerCase(),inat=$('#fInativos').checked;
+  const L=ADM.cat.filter(r=>(!fp||r.peca_id===fp)&&(!fb||(r.servico+' '+r.peca_nome).toLowerCase().includes(fb))&&(inat||r.ativo));
+  $('#tCat tbody').innerHTML=L.length?L.map(r=>`<tr data-id="${r.id}" class="${r.ativo?'':'off'}">
+    <td>${esc(r.peca_nome)}</td>
+    <td><input data-f="servico" value="${esc(r.servico)}" aria-label="Serviço"></td>
+    <td><input data-f="preco" class="n" type="number" min="0" step="0.01" inputmode="decimal" value="${r.preco}" aria-label="Preço da peça"></td>
+    <td><input data-f="horas" class="n" type="number" min="0" step="0.1" inputmode="decimal" value="${r.horas}" aria-label="Horas de mão de obra"></td>
+    <td><label class="chk"><input data-f="ativo" type="checkbox"${r.ativo?' checked':''} aria-label="Ativo"> ${r.ativo?'Sim':'Não'}</label></td>
+    <td><button class="red" data-salvar>Salvar</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhum serviço encontrado.</td></tr>';
+}
+function renderMod(){
+  $('#tMod tbody').innerHTML=ADM.mod.map(r=>`<tr data-id="${esc(r.id)}">
+    <td><input data-f="nome" value="${esc(r.nome)}" aria-label="Nome do modelo"></td>
+    <td><input data-f="multiplicador" class="n" type="number" min="0.1" step="0.05" inputmode="decimal" value="${r.multiplicador}" aria-label="Ajuste de preço"></td>
+    <td><button class="red" data-salvar>Salvar</button></td></tr>`).join('');
+}
+['fPeca','fBusca','fInativos'].forEach(id=>$('#'+id).addEventListener('input',renderCat));
+$('#nsPeca').addEventListener('change',()=>{$('#nsOutraL').hidden=$('#nsPeca').value!=='__nova'});
+
+// salva e confere se gravou (sem permissão o banco devolve 0 linhas)
+async function gravou(q,msg){const {data,error}=await q.select();
+  if(error){toast('Erro: '+error.message);return false}
+  if(!data||!data.length){toast('Sem permissão para alterar');return false}
+  toast(msg);return true}
+async function depoisDeSalvar(){await carregarAdmin();try{await loadData()}catch(e){}}
+
+$('#cfgSalvar').addEventListener('click',async()=>{
+  if(await gravou(sb.from('config').update({valor_hora:n2($('#cfgHora').value),valor_km:n2($('#cfgKm').value),updated_at:new Date().toISOString()}).eq('id',1),'Valores padrão salvos')){
+    st.rate=n2($('#cfgHora').value);st.dvkm=n2($('#cfgKm').value);save();await depoisDeSalvar()}
+});
+$('#tCat').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-salvar]');if(!b)return;const tr=b.closest('tr'),v=f=>tr.querySelector(`[data-f="${f}"]`);
+  const servico=v('servico').value.trim();if(!servico)return toast('Informe o nome do serviço');
+  b.disabled=true;
+  await gravou(sb.from('catalogo').update({servico,preco:n2(v('preco').value),horas:n2(v('horas').value),ativo:v('ativo').checked}).eq('id',+tr.dataset.id),'Serviço salvo')&&await depoisDeSalvar();
+  b.disabled=false;
+});
+$('#novoServ').addEventListener('submit',async e=>{
+  e.preventDefault();let peca_id=$('#nsPeca').value,peca_nome;
+  if(peca_id==='__nova'){peca_nome=$('#nsOutra').value.trim();if(!peca_nome)return toast('Informe o nome da peça');peca_id=slug(peca_nome)}
+  else peca_nome=PARTES_3D[peca_id]||ADM.cat.find(r=>r.peca_id===peca_id)?.peca_nome||peca_id;
+  const servico=$('#nsServ').value.trim();if(!servico)return toast('Informe o serviço');
+  const ordem=1+Math.max(0,...ADM.cat.filter(r=>r.peca_id===peca_id).map(r=>r.ordem||0));
+  if(await gravou(sb.from('catalogo').insert({peca_id,peca_nome,servico,preco:n2($('#nsPreco').value),horas:n2($('#nsHoras').value),ordem}),'Serviço adicionado')){
+    $('#nsServ').value='';$('#nsPreco').value=0;$('#nsHoras').value=0;$('#nsOutra').value='';await depoisDeSalvar();$('#nsPeca').value=peca_id;$('#nsOutraL').hidden=true}
+});
+$('#tMod').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-salvar]');if(!b)return;const tr=b.closest('tr'),v=f=>tr.querySelector(`[data-f="${f}"]`);
+  const nome=v('nome').value.trim(),mult=n2(v('multiplicador').value);
+  if(!nome||mult<=0)return toast('Confira nome e ajuste');
+  b.disabled=true;await gravou(sb.from('modelos').update({nome,multiplicador:mult}).eq('id',tr.dataset.id),'Modelo salvo')&&await depoisDeSalvar();b.disabled=false;
+});
+$('#novoMod').addEventListener('submit',async e=>{
+  e.preventDefault();const nome=$('#nmNome').value.trim(),mult=n2($('#nmMult').value);
+  if(!nome||mult<=0)return toast('Confira nome e ajuste');
+  let id=slug(nome)||'modelo';if(ADM.mod.some(r=>r.id===id))id+='_'+Date.now().toString(36).slice(-3);
+  if(await gravou(sb.from('modelos').insert({id,nome,multiplicador:mult}),'Modelo adicionado')){$('#nmNome').value='';$('#nmMult').value=1;await depoisDeSalvar()}
+});
 
 const STS=['Aguardando aprovação','Aprovado','Em execução','Pronto','Entregue','Recusado'];
 function renderOS(){

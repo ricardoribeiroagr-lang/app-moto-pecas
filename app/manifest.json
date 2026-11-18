@@ -1,7 +1,7 @@
 {
  "name": "Moto Peças Faxinal – Oficina",
  "short_name": "Oficina MPF",
- "start_url": ".",
+ "start_url": "/",
  "display": "standalone",
  "background_color": "#ffffff",
  "theme_color": "#e3262f",
@@ -10,12 +10,24 @@
   {
    "src": "icon-192.png",
    "sizes": "192x192",
-   "type": "image/png"
+   "type": "image/png",
+   "purpose": "any"
   },
   {
    "src": "icon-512.png",
    "sizes": "512x512",
-   "type": "image/png"
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
   }
- ]
+ ],
+ "id": "/",
+ "scope": "/",
+ "description": "Orçamentos e ordens de serviço da Moto Peças Faxinal",
+ "orientation": "any"
 }
