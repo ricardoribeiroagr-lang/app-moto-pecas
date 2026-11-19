@@ -60,7 +60,8 @@ fieldset.desl{border:1px solid var(--line);border-radius:10px;padding:8px 12px 1
 .filt{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}.filt>*{flex:1 1 180px}
 .chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}.chk input{width:22px;min-height:22px}
 .admt input{min-height:40px;padding:6px 8px}.admt td{vertical-align:middle}.admt .n{max-width:120px}
-.admt tr.off td{opacity:.55}.admt button{min-height:40px;padding:0 12px}
+.admt tr.off td{opacity:.55}
+button.del{color:var(--redink)!important;border-color:var(--redink)!important}.admt button{min-height:40px;padding:0 12px}
 .note{font-size:13px;color:var(--mut);margin:6px 0 0}
 .band{padding:clamp(28px,4vw,48px) max(3vw,16px)}
 .band h2{font-size:32px;margin-bottom:14px}
@@ -205,6 +206,12 @@ td .acts{gap:6px;flex-wrap:nowrap}td .acts button{min-height:40px;padding:0 10px
     <div class="scroll"><table class="stack admt" id="tMod"><thead><tr><th>Modelo</th><th>Ajuste</th><th></th></tr></thead><tbody></tbody></table></div>
     <p class="note">Ajuste 1,00 = preço base. 1,35 = peças 35% mais caras. 0,85 = 15% mais baratas.</p>
   </div>
+
+  <div class="card">
+    <h3>Ordens de serviço de teste</h3>
+    <p class="note" style="margin:0 0 12px">Para excluir uma OS, use o botão <b>Excluir</b> na lista de OS. Para começar do zero depois dos testes, apague todas de uma vez. Clientes e motos cadastrados continuam.</p>
+    <button class="ghost del" id="admApagarTudo">Apagar todas as OS</button>
+  </div>
 </section>
 </div>
 <div id="sheet" role="dialog" aria-modal="false" aria-labelledby="shT" hidden>
@@ -289,7 +296,7 @@ async function show(session){
   $('#userTag').textContent=session.user.email;
   try{await loadData()}catch(e){toast('Erro ao carregar dados: '+e.message);return}
   try{const {data}=await sb.rpc('is_admin');ADMIN=data===true}catch(e){ADMIN=false}
-  $('#btnAdmin').hidden=!ADMIN;
+  $('#btnAdmin').hidden=!ADMIN;renderOS();
   if(!built){built=true;try{build()}catch(e){noView()}}
 }
 $('#senhaForm').addEventListener('submit',async e=>{
@@ -711,6 +718,25 @@ $('#novoMod').addEventListener('submit',async e=>{
   if(await gravou(sb.from('modelos').insert({id,nome,multiplicador:mult}),'Modelo adicionado')){$('#nmNome').value='';$('#nmMult').value=1;await depoisDeSalvar()}
 });
 
+/* ---------- excluir OS (só administrador; o banco também bloqueia os demais) ---------- */
+function pedirExclusao(id){
+  if(!ADMIN)return;
+  abrirFolha(id,`Excluir a OS #${id}?`,'A OS e os itens dela serão apagados. Isso não pode ser desfeito.',
+    [['Excluir definitivamente','red',async()=>{fechaFolha();
+      const {data,error}=await sb.from('ordens_servico').delete().eq('id',id).select('id');
+      if(error)return toast('Erro: '+error.message);
+      if(!data||!data.length)return toast('Sem permissão para excluir');
+      delete osCache[id];toast(`OS #${id} excluída`);loadOS()}]]);
+}
+$('#admApagarTudo').addEventListener('click',()=>{
+  if(!ADMIN)return;
+  abrirFolha(0,'Apagar TODAS as OS?','Todas as ordens de serviço e seus itens serão apagados. Use só para limpar os testes. Não pode ser desfeito.',
+    [['Sim, apagar todas','red',async()=>{fechaFolha();
+      const {data,error}=await sb.from('ordens_servico').delete().gt('id',0).select('id');
+      if(error)return toast('Erro: '+error.message);
+      Object.keys(osCache).forEach(k=>delete osCache[k]);toast(`${data?.length||0} OS apagadas`);loadOS()}]]);
+});
+
 const STS=['Aguardando aprovação','Aprovado','Em execução','Pronto','Entregue','Recusado'];
 function renderOS(){
   $('#osT tbody').innerHTML=OS.length?OS.map(o=>`<tr><td><b>#${o.id}</b></td>
@@ -718,10 +744,11 @@ function renderOS(){
     <td>${esc(o.clientes?.nome)}</td><td>${esc(o.motos?.modelos?.nome)} · ${esc(o.motos?.placa)}</td>
     <td>${esc(o.itens_os.map(i=>(i.qtd>1?i.qtd+'× ':'')+i.servico).join(', '))}</td><td class="num">${brl(o.total)}</td>
     <td><select data-os="${o.id}" aria-label="Status da OS ${o.id}">${STS.map(s=>`<option${s===o.status?' selected':''}>${s}</option>`).join('')}</select></td>
-    <td><div class="acts"><button class="wa" data-send="${o.id}" aria-label="Enviar PDF da OS ${o.id}">Enviar PDF</button><button class="ghost" data-txt="${o.id}" aria-label="Enviar texto da OS ${o.id}">Texto</button><button class="ghost" data-pdf="${o.id}" aria-label="Baixar PDF da OS ${o.id}">Baixar</button></div></td></tr>`).join('')
+    <td><div class="acts"><button class="wa" data-send="${o.id}" aria-label="Enviar PDF da OS ${o.id}">Enviar PDF</button><button class="ghost" data-txt="${o.id}" aria-label="Enviar texto da OS ${o.id}">Texto</button><button class="ghost" data-pdf="${o.id}" aria-label="Baixar PDF da OS ${o.id}">Baixar</button>${ADMIN?`<button class="ghost del" data-del="${o.id}" aria-label="Excluir OS ${o.id}">Excluir</button>`:''}</div></td></tr>`).join('')
     :'<tr><td colspan="8" class="empty">Nenhuma OS ainda.</td></tr>';
 }
-$('#osT').addEventListener('click',e=>{const b=e.target.closest('[data-pdf],[data-send],[data-txt]');if(!b)return;
+$('#osT').addEventListener('click',e=>{const d=e.target.closest('[data-del]');if(d)return pedirExclusao(+d.dataset.del);
+  const b=e.target.closest('[data-pdf],[data-send],[data-txt]');if(!b)return;
   if(b.dataset.pdf)baixarPDF(+b.dataset.pdf);else if(b.dataset.send)enviarPDF(+b.dataset.send);else enviarTexto(+b.dataset.txt)});
 $('#osT').addEventListener('change',async e=>{
   const s=e.target.closest('[data-os]');if(!s)return;
