@@ -1093,7 +1093,7 @@ function build(){
   MODELO_3D?loadGLB():primitive();
 
   // --- carro (carregado só quando um carro é escolhido)
-  let carroEstado=null;
+  let carroEstado=null,zoomF=1;
   function loadCarro(){
     carroEstado='carregando';$('#semCarro').hidden=false;$('#semCarro').innerHTML='<b>Carro</b><span>Carregando o carro 3D…</span>';
     new T.GLTFLoader().load('carro.glb',g=>{
@@ -1112,7 +1112,7 @@ function build(){
   }
   trocar3D=tipo=>{
     const c=tipo==='carro';raizMoto.visible=!c;raizCarro.visible=c;groups=c?GC:GM;
-    ctl.target.set(0,c?.5:.75,0);$('#credito').innerHTML=CREDITO[c?'carro':'moto'];
+    ctl.target.set(0,c?.45:.75,0);zoomF=c?1.45:1;ctl.maxDistance=c?9:7;size();$('#credito').innerHTML=CREDITO[c?'carro':'moto'];
     $('#hint3d').textContent=c?'Arraste para girar · toque numa parte do carro':'Arraste para girar · pinça para zoom · toque numa peça';
     if(c&&!carroEstado)loadCarro();
     $('#semCarro').hidden=!(c&&carroEstado!=='ok');
@@ -1139,7 +1139,7 @@ function build(){
   r.domElement.addEventListener('pointerleave',()=>tip.style.display='none');
 
   const size=()=>{const w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;r.setSize(w,h,false);cam.aspect=w/h;
-    cam.position.setLength(w<520?5.2:4.6);cam.updateProjectionMatrix()};
+    cam.position.setLength((w<520?5.2:4.6)*zoomF);cam.updateProjectionMatrix()};
   new ResizeObserver(size).observe(box);size();
   trocar3D(tipo3D);
   (function loop(){ctl.update();r.render(scene,cam);requestAnimationFrame(loop)})();
