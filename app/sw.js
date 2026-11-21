@@ -1,6 +1,6 @@
 // Service worker: permite instalar o app e abrir mais rápido.
 // Dados (clientes, OS, preços) sempre vêm do Supabase, nunca do cache.
-const VERSAO = 'mpf-v8';
+const VERSAO = 'mpf-v9';
 const BASE = ['./', 'index.html', 'manifest.json', 'logo.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
