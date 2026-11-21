@@ -124,7 +124,7 @@ td .acts{gap:6px;flex-wrap:nowrap}td .acts button{min-height:40px;padding:0 10px
     <div class="pick"><select id="partSel" aria-label="Escolher peça pela lista" style="max-width:260px"></select></div>
     <p class="hint" id="hint3d">Arraste para girar · pinça para zoom · toque numa peça</p>
     <div class="semcarro" id="semCarro" hidden><b>Carro</b><span>Escolha a peça na lista acima para ver os serviços da tabela da empresa.</span></div>
-    <p class="credit">Modelo 3D: <a href="https://sketchfab.com/3d-models/motorcycle-693e83d86e1e4e5b95e4314dbdd95d40" target="_blank">“Motorcycle”, de Silas6</a>, licença <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>, peças separadas para o app</p>
+    <p class="credit" id="credito">Modelo 3D: <a href="https://sketchfab.com/3d-models/motorcycle-693e83d86e1e4e5b95e4314dbdd95d40" target="_blank">“Motorcycle”, de Silas6</a>, licença <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>, peças separadas para o app</p>
   </section>
 
   <aside class="side">
@@ -433,7 +433,7 @@ function aplicarCliente(){
   $('#partSel').innerHTML='<option value="">'+(tipo==='carro'?'Escolha a peça do carro…':'Ou escolha a peça na lista…')+'</option>'+Object.entries(P).map(([k,v])=>`<option value="${esc(k)}">${esc(v.n)}</option>`).join('');
   $('#partSel').value=st.sel||'';
   // carro: sem 3D (por enquanto), serviços pela lista
-  const carro=tipo==='carro';$('#view').style.visibility=carro?'hidden':'';$('#semCarro').hidden=!carro;$('#hint3d').hidden=carro;
+  tipo3D=tipo;if(trocar3D)trocar3D(tipo);
   paint();renderQuote();
 }
 $('#tipoCli').addEventListener('change',e=>{st.emp=e.target.value;st.veic='';st.items=[];st.sel=null;
@@ -1001,7 +1001,9 @@ $('#osT').addEventListener('change',async e=>{
 });
 
 /* ---------- 3D ---------- */
-let groups={},paint=()=>{};
+let GM={},GC={},groups=GM,tipo3D='moto',trocar3D=null,paint=()=>{};
+const CREDITO={moto:'Modelo 3D: <a href="https://sketchfab.com/3d-models/motorcycle-693e83d86e1e4e5b95e4314dbdd95d40" target="_blank">“Motorcycle”, de Silas6</a>, licença <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>, peças separadas para o app',
+  carro:'Carro 3D: <a href="https://sketchfab.com/3d-models/ace-11-low-poly-model-055ff8a21b8d4d279debca089e2fafcd" target="_blank">“Ace \'11 – Low Poly model”, de Daniel Zhabotinsky</a>, licença <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>, peças agrupadas para o app'};
 function select(id){
   st.sel=id;$('#partSel').value=id||'';paint();renderPart();
   if(id&&innerWidth<900)$('#partBox').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'nearest'});
@@ -1020,6 +1022,7 @@ function build(){
   Object.assign(sun.shadow.camera,{left:-2,right:2,top:2,bottom:-2});scene.add(sun);
   const gnd=new T.Mesh(new T.CircleGeometry(2.4,48),new T.ShadowMaterial({opacity:.2}));gnd.rotation.x=-Math.PI/2;gnd.receiveShadow=true;scene.add(gnd);
 
+  const raizMoto=new T.Group(),raizCarro=new T.Group();raizCarro.visible=false;scene.add(raizMoto,raizCarro);
   // --- modelo real (.glb): objetos cujo nome = peca_id do catálogo viram clicáveis
   function loadGLB(){
     new T.GLTFLoader().load(MODELO_3D,g=>{
@@ -1029,10 +1032,10 @@ function build(){
       const c=new T.Vector3();bb.getCenter(c);root.position.set(-c.x,-bb.min.y,-c.z);
       root.traverse(o=>{
         if(o.isMesh){o.castShadow=true;o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone()}
-        if((P[o.name]||PARTES_3D[o.name])&&!groups[o.name]){o.userData.part=o.name;groups[o.name]=o}
+        if((P[o.name]||PARTES_3D[o.name])&&!GM[o.name]){o.userData.part=o.name;GM[o.name]=o}
       });
-      scene.add(root);
-      const faltam=Object.keys(P).filter(k=>!groups[k]);
+      raizMoto.add(root);paint();
+      const faltam=Object.keys(P).filter(k=>!GM[k]);
       if(faltam.length)console.info('Peças do catálogo sem objeto no .glb:',faltam.join(', '));
     },undefined,()=>{toast('Não foi possível abrir '+MODELO_3D+'. Usando a moto simplificada.');primitive()});
   }
@@ -1041,7 +1044,7 @@ function build(){
   function primitive(){
     const M=(c,ro=.5,me=.2)=>new T.MeshStandardMaterial({color:c,roughness:ro,metalness:me});
     const RED=0xd81f28,BLK=0x1b1c1f,MET=0x9aa1ab,CHR=0xc9ced6,DK=0x3a3e45;
-    const add=(id,mesh)=>{mesh.castShadow=true;let g=groups[id];if(!g){g=new T.Group();g.userData.part=id;groups[id]=g;scene.add(g)}g.add(mesh);return mesh};
+    const add=(id,mesh)=>{mesh.castShadow=true;let g=GM[id];if(!g){g=new T.Group();g.userData.part=id;GM[id]=g;raizMoto.add(g)}g.add(mesh);return mesh};
     const at=(m,x,y,z,rx=0,ry=0,rz=0)=>{m.position.set(x,y,z);m.rotation.set(rx,ry,rz);return m};
     const tube=(a,b,rad,c)=>{const d=new T.Vector3().subVectors(b,a),m=new T.Mesh(new T.CylinderGeometry(rad,rad,d.length(),14),c);
       m.position.copy(a).add(b).multiplyScalar(.5);m.quaternion.setFromUnitVectors(V(0,1,0),d.normalize());return m};
@@ -1089,6 +1092,33 @@ function build(){
   }
   MODELO_3D?loadGLB():primitive();
 
+  // --- carro (carregado só quando um carro é escolhido)
+  let carroEstado=null;
+  function loadCarro(){
+    carroEstado='carregando';$('#semCarro').hidden=false;$('#semCarro').innerHTML='<b>Carro</b><span>Carregando o carro 3D…</span>';
+    new T.GLTFLoader().load('carro.glb',g=>{
+      const root=new T.Group();root.add(g.scene);
+      let bb=new T.Box3().setFromObject(root);const s=new T.Vector3();bb.getSize(s);
+      if(s.z>s.x)g.scene.rotation.y=-Math.PI/2;
+      bb=new T.Box3().setFromObject(root);bb.getSize(s);root.scale.setScalar(2.7/Math.max(s.x,s.z));
+      bb=new T.Box3().setFromObject(root);const c=new T.Vector3();bb.getCenter(c);root.position.set(-c.x,-bb.min.y,-c.z);
+      root.traverse(o=>{
+        if(o.isMesh){o.castShadow=true;o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone()}
+        if(PARTES_CARRO[o.name]&&!GC[o.name]){o.userData.part=o.name;GC[o.name]=o}
+      });
+      raizCarro.add(root);carroEstado='ok';$('#semCarro').hidden=true;paint();
+    },undefined,()=>{carroEstado='erro';$('#semCarro').hidden=false;
+      $('#semCarro').innerHTML='<b>Carro</b><span>Não foi possível abrir o 3D do carro. Escolha a peça na lista acima.</span>'});
+  }
+  trocar3D=tipo=>{
+    const c=tipo==='carro';raizMoto.visible=!c;raizCarro.visible=c;groups=c?GC:GM;
+    ctl.target.set(0,c?.5:.75,0);$('#credito').innerHTML=CREDITO[c?'carro':'moto'];
+    $('#hint3d').textContent=c?'Arraste para girar · toque numa parte do carro':'Arraste para girar · pinça para zoom · toque numa peça';
+    if(c&&!carroEstado)loadCarro();
+    $('#semCarro').hidden=!(c&&carroEstado!=='ok');
+    paint();
+  };
+
   paint=()=>{for(const[id,g]of Object.entries(groups))g.traverse(o=>{for(const m of [].concat(o.material||[])){if(!m.emissive)continue;const on=id===st.sel;m.emissive.setHex(on?0xff5a1f:0);m.emissiveIntensity=on?.6:0}})};
 
   const ctl=new T.OrbitControls(cam,r.domElement);
@@ -1111,6 +1141,7 @@ function build(){
   const size=()=>{const w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;r.setSize(w,h,false);cam.aspect=w/h;
     cam.position.setLength(w<520?5.2:4.6);cam.updateProjectionMatrix()};
   new ResizeObserver(size).observe(box);size();
+  trocar3D(tipo3D);
   (function loop(){ctl.update();r.render(scene,cam);requestAnimationFrame(loop)})();
 }
 
