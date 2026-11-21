@@ -193,6 +193,7 @@ td .acts{gap:6px;flex-wrap:nowrap}td .acts button{min-height:40px;padding:0 10px
       <label class="chk"><input type="checkbox" id="fInativos"> Mostrar desativados</label>
     </div>
     <div class="scroll"><table class="stack admt" id="tCat"><thead><tr><th>Peça</th><th>Serviço</th><th>Preço peça (R$)</th><th>M.O. (h)</th><th>Ativo</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div style="margin:6px 0 10px"><button class="ghost del" id="admLimparCat">Apagar todo o catálogo</button></div>
     <p class="note">O preço da peça é o do modelo base (ajuste 1,00). Para os outros modelos, o app multiplica pelo ajuste de cada um. Peças fora da lista da moto 3D aparecem só na lista de peças, não na moto.</p>
   </div>
 
@@ -667,7 +668,7 @@ function renderCat(){
     <td><input data-f="preco" class="n" type="number" min="0" step="0.01" inputmode="decimal" value="${r.preco}" aria-label="Preço da peça"></td>
     <td><input data-f="horas" class="n" type="number" min="0" step="0.1" inputmode="decimal" value="${r.horas}" aria-label="Horas de mão de obra"></td>
     <td><label class="chk"><input data-f="ativo" type="checkbox"${r.ativo?' checked':''} aria-label="Ativo"> ${r.ativo?'Sim':'Não'}</label></td>
-    <td><button class="red" data-salvar>Salvar</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhum serviço encontrado.</td></tr>';
+    <td><div class="acts"><button class="red" data-salvar>Salvar</button><button class="ghost del" data-excluir aria-label="Excluir serviço">Excluir</button></div></td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhum serviço encontrado.</td></tr>';
 }
 function renderMod(){
   $('#tMod tbody').innerHTML=ADM.mod.map(r=>`<tr data-id="${esc(r.id)}">
@@ -689,6 +690,7 @@ $('#cfgSalvar').addEventListener('click',async()=>{
   if(await gravou(sb.from('config').update({valor_hora:n2($('#cfgHora').value),valor_km:n2($('#cfgKm').value),updated_at:new Date().toISOString()}).eq('id',1),'Valores padrão salvos')){
     st.rate=n2($('#cfgHora').value);st.dvkm=n2($('#cfgKm').value);save();await depoisDeSalvar()}
 });
+$('#tCat').addEventListener('click',e=>{const x=e.target.closest('[data-excluir]');if(x)excluirServico(+x.closest('tr').dataset.id)});
 $('#tCat').addEventListener('click',async e=>{
   const b=e.target.closest('[data-salvar]');if(!b)return;const tr=b.closest('tr'),v=f=>tr.querySelector(`[data-f="${f}"]`);
   const servico=v('servico').value.trim();if(!servico)return toast('Informe o nome do serviço');
@@ -716,6 +718,45 @@ $('#novoMod').addEventListener('submit',async e=>{
   if(!nome||mult<=0)return toast('Confira nome e ajuste');
   let id=slug(nome)||'modelo';if(ADM.mod.some(r=>r.id===id))id+='_'+Date.now().toString(36).slice(-3);
   if(await gravou(sb.from('modelos').insert({id,nome,multiplicador:mult}),'Modelo adicionado')){$('#nmNome').value='';$('#nmMult').value=1;await depoisDeSalvar()}
+});
+
+/* ---------- excluir serviços do catálogo (só administrador) ----------
+   Serviço que já aparece em alguma OS não pode sumir do banco (a OS aponta para ele):
+   nesse caso ele é desativado, sai do app e as OS antigas continuam intactas. */
+async function idsUsadosEmOS(){
+  const {data,error}=await sb.from('itens_os').select('catalogo_id');
+  if(error)throw error;return new Set(data.map(r=>r.catalogo_id).filter(Boolean));
+}
+function excluirServico(id){
+  if(!ADMIN)return;const r=ADM.cat.find(c=>c.id===id);if(!r)return;
+  abrirFolha(0,`Excluir "${r.servico}" (${r.peca_nome})?`,'O serviço sai do catálogo. Não pode ser desfeito.',
+    [['Excluir','red',async()=>{fechaFolha();
+      try{
+        if((await idsUsadosEmOS()).has(id)){
+          await gravou(sb.from('catalogo').update({ativo:false}).eq('id',id),'Já usado em OS: foi desativado em vez de apagado');
+        }else{
+          const {data,error}=await sb.from('catalogo').delete().eq('id',id).select('id');
+          if(error)return toast('Erro: '+error.message);
+          toast(data&&data.length?'Serviço excluído':'Sem permissão para excluir');
+        }
+      }catch(e){return toast('Erro: '+e.message)}
+      await depoisDeSalvar()}]]);
+}
+$('#admLimparCat').addEventListener('click',()=>{
+  if(!ADMIN)return;
+  abrirFolha(0,'Apagar TODO o catálogo?',`Todos os ${ADM.cat.length} serviços serão removidos, para você cadastrar do zero. Serviços já usados em OS ficam só desativados (as OS antigas não mudam). Não pode ser desfeito.`,
+    [['Sim, apagar o catálogo','red',async()=>{fechaFolha();
+      try{
+        const usados=[...await idsUsadosEmOS()];
+        let q=sb.from('catalogo').delete().gt('id',0);
+        if(usados.length)q=q.not('id','in',`(${usados.join(',')})`);
+        const {data,error}=await q.select('id');
+        if(error)return toast('Erro: '+error.message);
+        let desat=0;
+        if(usados.length){const u=await sb.from('catalogo').update({ativo:false}).in('id',usados).select('id');if(u.error)return toast('Erro: '+u.error.message);desat=u.data.length}
+        toast(`${data.length} serviços apagados`+(desat?`, ${desat} desativados (usados em OS)`:''));
+      }catch(e){return toast('Erro: '+e.message)}
+      $('#fPeca').value='';await depoisDeSalvar()}]]);
 });
 
 /* ---------- excluir OS (só administrador; o banco também bloqueia os demais) ---------- */
