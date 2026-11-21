@@ -27,6 +27,7 @@ h1,h2,h3{font-family:"Barlow Condensed",sans-serif;font-weight:700;line-height:1
 #view{position:absolute;inset:0}#view canvas{display:block;width:100%;height:100%;touch-action:none}
 .credit{position:absolute;right:16px;bottom:12px;margin:0;font-size:12px;color:var(--mut);max-width:46%;text-align:right}.credit a{color:inherit}
 @media(max-width:600px){.credit{left:16px;right:auto;bottom:34px;max-width:none;text-align:left}}
+.pick{z-index:2}.semcarro{pointer-events:none;position:absolute;inset:0;display:grid;place-content:center;gap:6px;text-align:center;padding:24px;color:var(--mut)}.semcarro b{font:700 30px "Barlow Condensed",sans-serif;color:var(--ink)}
 .hint{position:absolute;left:16px;bottom:12px;margin:0;font-size:14px;color:var(--mut);pointer-events:none}
 .pick{position:absolute;left:16px;top:16px;right:16px}
 #tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);padding:4px 10px;border-radius:6px;font-size:14px;font-weight:600;display:none;white-space:nowrap}
@@ -61,6 +62,7 @@ fieldset.desl{border:1px solid var(--line);border-radius:10px;padding:8px 12px 1
 .chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}.chk input{width:22px;min-height:22px}
 .admt input{min-height:40px;padding:6px 8px}.admt td{vertical-align:middle}.admt .n{max-width:120px}
 .admt tr.off td{opacity:.55}
+.admin h4.sub{font:700 19px 'Barlow Condensed',sans-serif;margin:18px 0 8px}
 button.del{color:var(--redink)!important;border-color:var(--redink)!important}.admt button{min-height:40px;padding:0 12px}
 .note{font-size:13px;color:var(--mut);margin:6px 0 0}
 .band{padding:clamp(28px,4vw,48px) max(3vw,16px)}
@@ -120,19 +122,27 @@ td .acts{gap:6px;flex-wrap:nowrap}td .acts button{min-height:40px;padding:0 10px
     <div id="view"></div>
     <div id="tip"></div>
     <div class="pick"><select id="partSel" aria-label="Escolher peça pela lista" style="max-width:260px"></select></div>
-    <p class="hint">Arraste para girar · pinça para zoom · toque numa peça</p>
+    <p class="hint" id="hint3d">Arraste para girar · pinça para zoom · toque numa peça</p>
+    <div class="semcarro" id="semCarro" hidden><b>Carro</b><span>Escolha a peça na lista acima para ver os serviços da tabela da empresa.</span></div>
     <p class="credit">Modelo 3D: <a href="https://sketchfab.com/3d-models/motorcycle-693e83d86e1e4e5b95e4314dbdd95d40" target="_blank">“Motorcycle”, de Silas6</a>, licença <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>, peças separadas para o app</p>
   </section>
 
   <aside class="side">
     <div class="card">
-      <h2>Cliente e moto</h2>
-      <div class="grid2">
+      <h2>Cliente e veículo</h2>
+      <label style="margin-bottom:10px">Tipo de cliente<select id="tipoCli"><option value="">Particular</option></select></label>
+      <div class="grid2" id="camposPart">
         <label>Placa<input id="placa" autocomplete="off" style="text-transform:uppercase"></label>
         <label>Modelo<select id="modelo"></select></label>
         <label>Cliente<input id="cli" autocomplete="off"></label>
         <label>WhatsApp<input id="tel" inputmode="tel" autocomplete="off" placeholder="(11) 98765-4321"></label>
-        <label>Km da moto<input id="km" inputmode="numeric"></label>
+      </div>
+      <div class="grid2" id="camposEmp" hidden>
+        <label style="grid-column:1/-1">Veículo da frota<select id="veic"></select></label>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <label id="kmL">Km do veículo<input id="km" inputmode="numeric"></label>
+        <label id="obsL" hidden>Observação<input id="obs" autocomplete="off" placeholder="Ex.: barulho na suspensão"></label>
       </div>
       <p class="note" id="placaInfo"></p>
     </div>
@@ -208,6 +218,45 @@ td .acts{gap:6px;flex-wrap:nowrap}td .acts button{min-height:40px;padding:0 10px
     <p class="note">Ajuste 1,00 = preço base. 1,35 = peças 35% mais caras. 0,85 = 15% mais baratas.</p>
   </div>
 
+  <div class="card" id="admEmp">
+    <h3>Empresas clientes (frota e tabela própria)</h3>
+    <div class="filt">
+      <select id="aeSel" aria-label="Escolher empresa"></select>
+      <form id="aeNova" class="filt" style="margin:0;flex:2 1 300px"><input id="aeNovaNome" placeholder="Nova empresa (nome)"><button class="ghost">+ Nova empresa</button></form>
+    </div>
+    <div id="aeCorpo">
+      <div class="grid3" style="margin-bottom:6px">
+        <label>Nome<input id="aeNome"></label>
+        <label>Hora de mão de obra (R$)<input id="aeHora" type="number" min="0" step="1" inputmode="decimal"></label>
+        <label>WhatsApp<input id="aeTel" inputmode="tel" placeholder="(49) 99999-9999"></label>
+        <button class="red" id="aeSalvar">Salvar empresa</button>
+      </div>
+
+      <h4 class="sub">Frota</h4>
+      <form id="afNovo" class="addrow">
+        <label>Tipo<select id="afTipo"><option value="moto">Moto</option><option value="carro">Carro</option></select></label>
+        <label>Descrição<input id="afDesc" placeholder="Ex.: Honda NXR 160 Bros"></label>
+        <label>Placa<input id="afPlaca" style="text-transform:uppercase" placeholder="ABC1D23"></label>
+        <button class="red">+ Adicionar veículo</button>
+      </form>
+      <div class="scroll"><table class="stack admt" id="tFrota"><thead><tr><th>Tipo</th><th>Descrição</th><th>Placa</th><th>Ativo</th><th></th></tr></thead><tbody></tbody></table></div>
+
+      <h4 class="sub">Tabela de preços da empresa</h4>
+      <form id="atNovo" class="addrow">
+        <label>Para<select id="atTipo"><option value="moto">Moto</option><option value="carro">Carro</option></select></label>
+        <label>Peça<select id="atPeca"></select></label>
+        <label id="atOutraL" hidden>Nome da peça<input id="atOutra" placeholder="Ex.: Embreagem"></label>
+        <label>Serviço<input id="atServ" required placeholder="Ex.: Troca de óleo"></label>
+        <label>Preço da peça (R$)<input id="atPreco" type="number" min="0" step="0.01" inputmode="decimal" value="0"></label>
+        <label>Mão de obra (horas)<input id="atHoras" type="number" min="0" step="0.1" inputmode="decimal" value="0"></label>
+        <button class="red">+ Adicionar à tabela</button>
+      </form>
+      <div class="filt"><select id="atFiltro" aria-label="Filtrar tabela"><option value="moto">Serviços de moto</option><option value="carro">Serviços de carro</option></select></div>
+      <div class="scroll"><table class="stack admt" id="tTab"><thead><tr><th>Peça</th><th>Serviço</th><th>Preço peça (R$)</th><th>M.O. (h)</th><th>Ativo</th><th></th></tr></thead><tbody></tbody></table></div>
+      <p class="note">Mão de obra = horas × valor da hora da empresa. Na moto, as peças da lista ficam clicáveis no 3D. No carro, os serviços são escolhidos pela lista.</p>
+    </div>
+  </div>
+
   <div class="card">
     <h3>Ordens de serviço de teste</h3>
     <p class="note" style="margin:0 0 12px">Para excluir uma OS, use o botão <b>Excluir</b> na lista de OS. Para começar do zero depois dos testes, apague todas de uma vez. Clientes e motos cadastrados continuam.</p>
@@ -273,8 +322,8 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{flowType:'i
 let precisaSenha=TIPO_LINK==='invite'||TIPO_LINK==='recovery';
 
 /* ---------- estado ---------- */
-let P={},CAT={},MODELS={},OS=[],built=false,CONFIG=null,cfgAplicada=false,ADMIN=false,canal=null;
-let st={sel:null,placa:'',cli:'',tel:'',modelo:'',km:'',rate:VALOR_HORA_PADRAO,dkm:'',dvkm:VALOR_KM_PADRAO,items:[]};   // items: {cid,q}
+let EMPRESAS={},FROTA=[],TAB=[],CATG=[],P={},CAT={},MODELS={},OS=[],built=false,CONFIG=null,cfgAplicada=false,ADMIN=false,canal=null;
+let st={sel:null,placa:'',cli:'',tel:'',modelo:'',km:'',rate:VALOR_HORA_PADRAO,dkm:'',dvkm:VALOR_KM_PADRAO,items:[],emp:'',veic:'',obs:''};   // items: {cid,q}
 try{const s=JSON.parse(localStorage.getItem('pista-rascunho'));if(s)st={...st,...s,sel:null}}catch(e){}
 const save=()=>{try{localStorage.setItem('pista-rascunho',JSON.stringify(st))}catch(e){}};
 
@@ -325,32 +374,74 @@ $('#sair').addEventListener('click',()=>sb.auth.signOut());
 
 /* ---------- dados ---------- */
 async function loadData(){
-  const [m,c,g]=await Promise.all([
+  const [m,c,g,e,f,t]=await Promise.all([
     sb.from('modelos').select('*').order('nome'),
     sb.from('catalogo').select('*').eq('ativo',true).order('peca_nome').order('ordem'),
-    sb.from('config').select('*').maybeSingle()]);
+    sb.from('config').select('*').maybeSingle(),
+    sb.from('empresas').select('*').order('nome'),
+    sb.from('motos').select('id,placa,descricao,tipo,ativo,empresa_id,km').not('empresa_id','is',null).order('placa'),
+    sb.from('tabela_empresa').select('*').eq('ativo',true).order('peca_nome').order('ordem')]);
   if(m.error)throw m.error;if(c.error)throw c.error;
+  // empresas (se a migração 04 ainda não rodou, simplesmente não aparecem)
+  EMPRESAS={};if(!e.error)e.data.forEach(r=>EMPRESAS[r.id]=r);
+  FROTA=f.error?[]:f.data.filter(v=>v.ativo);TAB=t.error?[]:t.data;CATG=c.data;
+  if(st.emp&&!EMPRESAS[st.emp]){st.emp='';st.veic=''}
   CONFIG=g.error?null:g.data;
   // valores padrão do administrador entram no primeiro orçamento da sessão (cada orçamento ainda pode mudar)
   if(CONFIG&&!cfgAplicada){cfgAplicada=true;st.rate=+CONFIG.valor_hora;st.dvkm=+CONFIG.valor_km}
   MODELS={};m.data.forEach(r=>MODELS[r.id]=r);
-  P={};CAT={};c.data.forEach(r=>{CAT[r.id]=r;(P[r.peca_id]??={n:r.peca_nome,o:[]}).o.push(r)});
-  st.items=st.items.filter(i=>CAT[i.cid]);
   if(!MODELS[st.modelo])st.modelo=m.data[0]?.id||'';
   $('#modelo').innerHTML=m.data.map(r=>`<option value="${esc(r.id)}">${esc(r.nome)}</option>`).join('');
-  $('#partSel').innerHTML='<option value="">Ou escolha a peça na lista…</option>'+Object.entries(P).map(([k,v])=>`<option value="${esc(k)}">${esc(v.n)}</option>`).join('');
-  [['placa','placa'],['cli','cli'],['tel','tel'],['modelo','modelo'],['km','km'],['rate','rate'],['dkm','dkm'],['dvkm','dvkm']].forEach(([id,k])=>$('#'+id).value=st[k]);
-  renderQuote();await loadOS();
+  $('#tipoCli').innerHTML='<option value="">Particular</option>'+Object.values(EMPRESAS).map(r=>`<option value="${esc(r.id)}">${esc(r.nome)} (empresa)</option>`).join('');
+  [['placa','placa'],['cli','cli'],['tel','tel'],['modelo','modelo'],['km','km'],['rate','rate'],['dkm','dkm'],['dvkm','dvkm'],['tipoCli','emp'],['obs','obs']].forEach(([id,k])=>$('#'+id).value=st[k]);
+  aplicarCliente();
+  await loadOS();
   if(!canal)canal=sb.channel('os').on('postgres_changes',{event:'*',schema:'public',table:'ordens_servico'},()=>loadOS()).subscribe();
 }
 
 async function loadOS(){
   const {data,error}=await sb.from('ordens_servico')
-    .select('id,status,total,created_at,clientes(nome),motos(placa,modelos(nome)),itens_os(servico,qtd)')
+    .select('id,status,total,created_at,empresa_id,clientes(nome),motos(placa,descricao,modelos(nome)),itens_os(servico,qtd)')
     .order('id',{ascending:false}).limit(50);
   if(error){toast('Erro ao carregar OS');return}
   OS=data;renderOS();
 }
+
+/* ---------- cliente particular x empresa (frota + tabela própria) ---------- */
+const empAtual=()=>st.emp?EMPRESAS[st.emp]:null;
+const frotaEmp=()=>FROTA.filter(v=>v.empresa_id===st.emp);
+const veicAtual=()=>FROTA.find(v=>v.id===st.veic)||null;
+const nomeVeic=v=>v?`${v.placa} · ${v.descricao||(v.tipo==='carro'?'Carro':'Moto')}`:'';
+// monta peças e serviços disponíveis: catálogo geral (particular) ou tabela da empresa para o tipo do veículo
+function aplicarCliente(){
+  const emp=empAtual();
+  $('#camposPart').hidden=!!emp;$('#camposEmp').hidden=!emp;$('#obsL').hidden=!emp;
+  let rows=CATG,tipo='moto';
+  if(emp){
+    const fr=frotaEmp();
+    if(!fr.some(v=>v.id===st.veic))st.veic=fr[0]?.id||'';
+    $('#veic').innerHTML=fr.length?fr.map(v=>`<option value="${esc(v.id)}">${esc(nomeVeic(v))}</option>`).join(''):'<option value="">Nenhum veículo cadastrado (Catálogo → Empresas)</option>';
+    $('#veic').value=st.veic;
+    tipo=veicAtual()?.tipo||'moto';
+    rows=TAB.filter(r=>r.empresa_id===st.emp&&r.tipo===tipo);
+    st.rate=+emp.valor_hora;$('#rate').value=st.rate;
+  }
+  $('#rate').disabled=!!emp;
+  P={};CAT={};rows.forEach(r=>{CAT[r.id]=r;(P[r.peca_id]??={n:r.peca_nome,o:[]}).o.push(r)});
+  st.items=st.items.filter(i=>CAT[i.cid]);
+  if(st.sel&&!P[st.sel])st.sel=null;
+  $('#partSel').innerHTML='<option value="">'+(tipo==='carro'?'Escolha a peça do carro…':'Ou escolha a peça na lista…')+'</option>'+Object.entries(P).map(([k,v])=>`<option value="${esc(k)}">${esc(v.n)}</option>`).join('');
+  $('#partSel').value=st.sel||'';
+  // carro: sem 3D (por enquanto), serviços pela lista
+  const carro=tipo==='carro';$('#view').style.visibility=carro?'hidden':'';$('#semCarro').hidden=!carro;$('#hint3d').hidden=carro;
+  paint();renderQuote();
+}
+$('#tipoCli').addEventListener('change',e=>{st.emp=e.target.value;st.veic='';st.items=[];st.sel=null;
+  if(!st.emp&&CONFIG)st.rate=+CONFIG.valor_hora;$('#rate').value=st.rate;aplicarCliente();save()});
+$('#veic').addEventListener('change',e=>{const antes=veicAtual()?.tipo;st.veic=e.target.value;
+  const v=veicAtual();if(v?.km!=null){st.km=String(v.km);$('#km').value=st.km}
+  if(v?.tipo!==antes){st.items=[];st.sel=null}aplicarCliente();save()});
+$('#obs').addEventListener('input',e=>{st.obs=e.target.value;save()});
 
 /* ---------- formulário ---------- */
 ['placa','cli','tel','modelo','km','rate','dkm','dvkm'].forEach(k=>{
@@ -368,13 +459,13 @@ $('#placa').addEventListener('change',async()=>{
 });
 $('#partSel').addEventListener('change',e=>select(e.target.value||null));
 
-const mult=()=>+(MODELS[st.modelo]?.multiplicador||1);
+const mult=()=>st.emp?1:+(MODELS[st.modelo]?.multiplicador||1);
 const unit=c=>Math.round(c.preco*mult()*100)/100;
 const line=it=>{const c=CAT[it.cid];return{name:c.servico,part:c.peca_nome,pc:unit(c)*it.q,mo:c.horas*st.rate*it.q,h:c.horas*it.q}};
 
 function renderPart(){
   const b=$('#partBox');
-  if(!st.sel||!P[st.sel]){b.innerHTML='<h2>Peça</h2><p class="empty">Toque numa peça da moto para ver os serviços e adicionar ao orçamento.</p>';return}
+  if(!st.sel||!P[st.sel]){b.innerHTML=`<h2>Peça</h2><p class="empty">${Object.keys(P).length?'Toque numa peça da moto (ou escolha na lista) para ver os serviços e adicionar ao orçamento.':(st.emp?'A tabela desta empresa ainda não tem serviços para este veículo. Cadastre em Catálogo → Empresas.':'O catálogo está vazio. Cadastre peças e serviços em Catálogo.')}</p>`;return}
   const p=P[st.sel];
   b.innerHTML=`<h3>${esc(p.n)}</h3><ul class="opts">${p.o.map(c=>`<li><div><b>${esc(c.servico)}</b><small>Peça ${brl(unit(c))} · M.O. ${hrs(c.horas)}</small></div><button class="red" data-add="${c.id}" aria-label="Adicionar ${esc(c.servico)}">+ Adicionar</button></li>`).join('')}</ul>`;
 }
@@ -397,9 +488,11 @@ function renderQuote(){
     <div><span>Mão de obra (${hrs(h)})</span><span class="price">${brl(mo)}</span></div>
     ${ds?`<div><span>Deslocamento (${dTxt})</span><span class="price">${brl(ds)}</span></div>`:''}
     <div class="big"><span>Total</span><span>${brl(pc+mo+ds)}</span></div>`;
-  const txt=`*Orçamento – ${NOME_OFICINA}*\nCliente: ${st.cli}\nMoto: ${MODELS[st.modelo]?.nome||''} – ${normPlaca(st.placa)}${st.km?' – '+st.km+' km':''}\n\n`+
+  const emp=empAtual(),vc=veicAtual();
+  const cab=emp?`Cliente: ${emp.nome}\nVeículo: ${nomeVeic(vc)}${st.km?' – '+st.km+' km':''}${st.obs?'\nObs.: '+st.obs:''}`:`Cliente: ${st.cli}\nMoto: ${MODELS[st.modelo]?.nome||''} – ${normPlaca(st.placa)}${st.km?' – '+st.km+' km':''}`;
+  const txt=`*Orçamento – ${NOME_OFICINA}*\n${cab}\n\n`+
     L.map(l=>`• ${l.part}: ${l.name} – ${brl(l.pc+l.mo)}`).join('\n')+`\n\nPeças: ${brl(pc)}\nMão de obra: ${brl(mo)}`+(ds?`\nDeslocamento (${dTxt}): ${brl(ds)}`:'')+`\n*Total: ${brl(pc+mo+ds)}*`;
-  const fone=st.tel.replace(/\D/g,'');
+  const fone=String(emp?(emp.telefone||''):st.tel).replace(/\D/g,'');
   $('#wa').href='https://wa.me/'+(fone?(fone.length<=11?'55':'')+fone:'')+'?text='+encodeURIComponent(txt);
   $('#wa').target='_blank';
   renderPart();
@@ -413,16 +506,21 @@ $('#items').addEventListener('click',e=>{
 
 $('#gerar').addEventListener('click',async()=>{
   if(!st.items.length&&!(num(st.dkm)*num(st.dvkm)))return toast('Adicione itens primeiro');
-  if(normPlaca(st.placa).length<7)return toast('Informe a placa');
-  if(!st.cli.trim())return toast('Informe o nome do cliente');
+  const emp=empAtual();
+  if(emp&&!veicAtual())return toast('Escolha o veículo da frota');
+  if(!emp&&normPlaca(st.placa).length<7)return toast('Informe a placa');
+  if(!emp&&!st.cli.trim())return toast('Informe o nome do cliente');
   const b=$('#gerar');b.disabled=true;
-  const {data,error}=await sb.rpc('criar_os',{p_cliente:st.cli,p_telefone:st.tel,p_placa:st.placa,p_modelo:st.modelo,
+  const {data,error}=emp?await sb.rpc('criar_os_empresa',{p_empresa:emp.id,p_veiculo:st.veic,p_km:parseInt(String(st.km).replace(/\D/g,''))||null,
+      p_obs:st.obs||null,p_itens:st.items.map(i=>({tabela_id:i.cid,qtd:i.q})),p_desloc_km:num(st.dkm),p_desloc_valor_km:num(st.dvkm)})
+    :await sb.rpc('criar_os',{p_cliente:st.cli,p_telefone:st.tel,p_placa:st.placa,p_modelo:st.modelo,
     p_km:parseInt(String(st.km).replace(/\D/g,''))||null,p_valor_hora:st.rate,p_itens:st.items.map(i=>({catalogo_id:i.cid,qtd:i.q})),
     p_desloc_km:num(st.dkm),p_desloc_valor_km:num(st.dvkm)});
   b.disabled=false;
   if(error)return toast('Não foi possível criar a OS: '+error.message);
-  Object.assign(st,{items:[],placa:'',cli:'',tel:'',km:'',dkm:''});
-  ['placa','cli','tel','km','dkm'].forEach(k=>$('#'+k).value='');$('#placaInfo').textContent='';
+  Object.assign(st,{items:[],placa:'',cli:'',tel:'',km:'',dkm:'',obs:''});
+  ['placa','cli','tel','km','dkm','obs'].forEach(k=>$('#'+k).value='');
+  if(emp){const v=veicAtual();if(v)v.km=null}$('#placaInfo').textContent='';
   renderQuote();save();loadOS();
   gerarPDF(data).then(r=>{if(!r)return;
     abrirFolha(data,`OS #${data} criada`,'Como quer mandar para o cliente?',[
@@ -478,7 +576,7 @@ function montarPDF(jsPDF, os, emp, logo) {
   campo('CLIENTE', os.clientes?.nome, M, y);
   campo('TELEFONE', os.clientes?.telefone, col2, y);
   y += 12;
-  campo('MOTO', os.motos?.modelos?.nome, M, y);
+  campo('VEÍCULO', os.motos?.modelos?.nome || os.motos?.descricao, M, y, col2 - M - 4);
   campo('PLACA', os.motos?.placa, col2, y);
   campo('KM DA MOTO', os.km != null ? Number(os.km).toLocaleString('pt-BR') : '', col2 + 30, y);
   campo('STATUS', os.status, col2 + 52, y, R - col2 - 52);
@@ -525,6 +623,7 @@ function montarPDF(jsPDF, os, emp, logo) {
   y = Math.max(y + 2, 200);
   if (y > 235) { doc.addPage(); y = 25; }
   txt('OBSERVAÇÕES', M, y, { s: 7.5, b: 1, c: MUT });
+  if (os.obs) txt(os.obs, M, y + 5.5, { s: 9.5, w: R - M });
   for (let i = 1; i <= 3; i++) hr(y + i * 7);
 
   // ---- Assinaturas
@@ -561,7 +660,7 @@ const osCache={};
 async function gerarPDF(id){
   if(!window.jspdf){toast('Não foi possível carregar o gerador de PDF');return null}
   const {data:os,error}=await sb.from('ordens_servico')
-    .select('id,status,km,valor_hora,total_pecas,total_mo,desloc_km,desloc_valor_km,total_desloc,total,created_at,clientes(nome,telefone),motos(placa,modelos(nome)),itens_os(peca_nome,servico,qtd,preco_unit,horas,valor_hora)')
+    .select('id,status,km,valor_hora,total_pecas,total_mo,desloc_km,desloc_valor_km,total_desloc,total,created_at,obs,clientes(nome,telefone),motos(placa,descricao,modelos(nome)),itens_os(peca_nome,servico,qtd,preco_unit,horas,valor_hora)')
     .eq('id',id).single();
   if(error){toast('Erro ao buscar a OS');return null}
   const doc=montarPDF(window.jspdf.jsPDF,os,EMPRESA,await carregarLogo());
@@ -589,7 +688,7 @@ async function enviarPDF(id){
 // Texto do WhatsApp para uma OS já salva
 function textoOS(os){
   const L=os.itens_os.map(i=>`• ${i.peca_nome}: ${(i.qtd>1?i.qtd+'× ':'')+i.servico} – ${brl(i.qtd*i.preco_unit+i.qtd*i.horas*i.valor_hora)}`).join('\n');
-  return `*Orçamento OS #${os.id} – ${EMPRESA.fantasia||EMPRESA.nome}*\nCliente: ${os.clientes?.nome||''}\nMoto: ${os.motos?.modelos?.nome||''} – ${os.motos?.placa||''}\n\n${L}\n\nPeças: ${brl(os.total_pecas)}\nMão de obra: ${brl(os.total_mo)}`+
+  return `*Orçamento OS #${os.id} – ${EMPRESA.fantasia||EMPRESA.nome}*\nCliente: ${os.clientes?.nome||''}\nVeículo: ${os.motos?.modelos?.nome||os.motos?.descricao||''} – ${os.motos?.placa||''}${os.obs?'\nObs.: '+os.obs:''}\n\n${L}\n\nPeças: ${brl(os.total_pecas)}\nMão de obra: ${brl(os.total_mo)}`+
     (+os.total_desloc?`\nDeslocamento (${String(+os.desloc_km).replace('.',',')} km × ${brl(os.desloc_valor_km)}): ${brl(os.total_desloc)}`:'')+`\n*Total: ${brl(os.total)}*`;
 }
 const linkWA=(tel,txt)=>{const f=String(tel||'').replace(/\D/g,'');return 'https://wa.me/'+(f?(f.length<=11?'55':'')+f:'')+'?text='+encodeURIComponent(txt)};
@@ -631,7 +730,7 @@ const PARTES_3D={pneu_dianteiro:'Pneu dianteiro',pneu_traseiro:'Pneu traseiro',f
   farol:'Farol',lanterna:'Lanterna traseira',bateria:'Bateria (tampa lateral)',tanque:'Tanque',banco:'Banco',guidao:'Guidão e comandos',retrovisores:'Retrovisores',quadro:'Quadro e balança'};
 const slug=t=>String(t).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
 const n2=v=>Math.max(parseFloat(String(v??'').replace(',','.'))||0,0);
-let ADM={cat:[],mod:[]};
+let ADM={cat:[],mod:[],emp:[],frota:[],tab:[]};
 function abrirAdmin(on){
   $('#adminView').hidden=!on;$('#mainApp').hidden=on;$('#osBand').hidden=on;
   $('#btnAdmin').textContent=on?'Orçamento':'Catálogo';
@@ -645,7 +744,7 @@ async function carregarAdmin(){
     sb.from('modelos').select('*').order('nome'),
     sb.from('config').select('*').maybeSingle()]);
   if(c.error||m.error)return toast('Erro ao carregar o catálogo');
-  ADM={cat:c.data,mod:m.data};
+  ADM={...ADM,cat:c.data,mod:m.data};carregarEmpresasAdm();
   if(g.error)toast('Valores padrão indisponíveis: rode a migração 02 no Supabase');
   else if(g.data){$('#cfgHora').value=g.data.valor_hora;$('#cfgKm').value=g.data.valor_km}
   // peças: as da moto 3D + as que já existem no catálogo
@@ -720,6 +819,110 @@ $('#novoMod').addEventListener('submit',async e=>{
   if(await gravou(sb.from('modelos').insert({id,nome,multiplicador:mult}),'Modelo adicionado')){$('#nmNome').value='';$('#nmMult').value=1;await depoisDeSalvar()}
 });
 
+/* ---------- administração: empresas clientes ---------- */
+const PARTES_CARRO={motor:'Motor',cambio_embreagem:'Câmbio e embreagem',freios:'Freios',suspensao_direcao:'Suspensão e direção',pneus_rodas:'Pneus e rodas',
+  bateria_eletrica:'Bateria e elétrica',iluminacao:'Faróis e lanternas',arrefecimento:'Arrefecimento',ar_condicionado:'Ar-condicionado',
+  injecao_combustivel:'Injeção e combustível',escapamento:'Escapamento',lataria_vidros:'Lataria e vidros',revisao:'Revisão geral'};
+async function carregarEmpresasAdm(){
+  const [e,f,t]=await Promise.all([
+    sb.from('empresas').select('*').order('nome'),
+    sb.from('motos').select('id,placa,descricao,tipo,ativo,empresa_id').not('empresa_id','is',null).order('placa'),
+    sb.from('tabela_empresa').select('*').order('peca_nome').order('ordem').order('id')]);
+  if(e.error){$('#admEmp').hidden=true;return}   // migração 04 ainda não rodou
+  $('#admEmp').hidden=false;
+  ADM.emp=e.data;ADM.frota=f.data||[];ADM.tab=t.data||[];
+  const sel=$('#aeSel').value;
+  $('#aeSel').innerHTML=ADM.emp.length?ADM.emp.map(r=>`<option value="${esc(r.id)}">${esc(r.nome)}</option>`).join(''):'<option value="">Nenhuma empresa</option>';
+  if(sel&&ADM.emp.some(r=>r.id===sel))$('#aeSel').value=sel;
+  renderEmpresaAdm();
+}
+const aeAtual=()=>ADM.emp.find(r=>r.id===$('#aeSel').value)||null;
+function pecasTabela(tipo){
+  const base={...(tipo==='carro'?PARTES_CARRO:PARTES_3D)};
+  ADM.tab.filter(r=>r.tipo===tipo).forEach(r=>{base[r.peca_id]??=r.peca_nome});
+  return Object.entries(base).sort((a,b)=>a[1].localeCompare(b[1],'pt'));
+}
+function renderEmpresaAdm(){
+  const e=aeAtual();$('#aeCorpo').hidden=!e;if(!e)return;
+  $('#aeNome').value=e.nome;$('#aeHora').value=e.valor_hora;$('#aeTel').value=e.telefone||'';
+  const fr=ADM.frota.filter(v=>v.empresa_id===e.id);
+  $('#tFrota tbody').innerHTML=fr.length?fr.map(v=>`<tr data-id="${esc(v.id)}" class="${v.ativo?'':'off'}">
+    <td>${v.tipo==='carro'?'Carro':'Moto'}</td>
+    <td><input data-f="descricao" value="${esc(v.descricao||'')}" aria-label="Descrição"></td>
+    <td>${esc(v.placa)}</td>
+    <td><label class="chk"><input data-f="ativo" type="checkbox"${v.ativo?' checked':''} aria-label="Ativo"> ${v.ativo?'Sim':'Não'}</label></td>
+    <td><div class="acts"><button class="red" data-salvar>Salvar</button><button class="ghost del" data-excluir>Excluir</button></div></td></tr>`).join('')
+    :'<tr><td colspan="5" class="empty">Nenhum veículo cadastrado.</td></tr>';
+  const tipo=$('#atTipo').value,selP=$('#atPeca').value;
+  $('#atPeca').innerHTML=pecasTabela(tipo).map(([k,v])=>`<option value="${esc(k)}">${esc(v)}</option>`).join('')+'<option value="__nova">Outra peça…</option>';
+  if(selP)$('#atPeca').value=selP;if(!$('#atPeca').value)$('#atPeca').selectedIndex=0;
+  $('#atOutraL').hidden=$('#atPeca').value!=='__nova';
+  const ft=$('#atFiltro').value,L=ADM.tab.filter(r=>r.empresa_id===e.id&&r.tipo===ft);
+  $('#tTab tbody').innerHTML=L.length?L.map(r=>`<tr data-id="${r.id}" class="${r.ativo?'':'off'}">
+    <td>${esc(r.peca_nome)}</td>
+    <td><input data-f="servico" value="${esc(r.servico)}" aria-label="Serviço"></td>
+    <td><input data-f="preco" class="n" type="number" min="0" step="0.01" inputmode="decimal" value="${r.preco}" aria-label="Preço da peça"></td>
+    <td><input data-f="horas" class="n" type="number" min="0" step="0.1" inputmode="decimal" value="${r.horas}" aria-label="Horas"></td>
+    <td><label class="chk"><input data-f="ativo" type="checkbox"${r.ativo?' checked':''} aria-label="Ativo"> ${r.ativo?'Sim':'Não'}</label></td>
+    <td><div class="acts"><button class="red" data-salvar>Salvar</button><button class="ghost del" data-excluir>Excluir</button></div></td></tr>`).join('')
+    :`<tr><td colspan="6" class="empty">Nenhum serviço de ${ft==='carro'?'carro':'moto'} na tabela.</td></tr>`;
+}
+$('#aeSel').addEventListener('change',renderEmpresaAdm);
+$('#atFiltro').addEventListener('change',renderEmpresaAdm);
+$('#atTipo').addEventListener('change',()=>{$('#atPeca').value='';$('#atFiltro').value=$('#atTipo').value;renderEmpresaAdm()});
+$('#atPeca').addEventListener('change',()=>{$('#atOutraL').hidden=$('#atPeca').value!=='__nova'});
+async function depoisEmpresa(){await carregarEmpresasAdm();try{await loadData()}catch(e){}}
+
+$('#aeNova').addEventListener('submit',async e=>{
+  e.preventDefault();const nome=$('#aeNovaNome').value.trim();if(!nome)return toast('Informe o nome da empresa');
+  const c=await sb.from('clientes').insert({nome}).select('id').single();if(c.error)return toast('Erro: '+c.error.message);
+  if(await gravou(sb.from('empresas').insert({nome,cliente_id:c.data.id,valor_hora:CONFIG?+CONFIG.valor_hora:90}),'Empresa criada')){
+    $('#aeNovaNome').value='';await carregarEmpresasAdm();$('#aeSel').value=ADM.emp.find(r=>r.nome===nome)?.id||'';renderEmpresaAdm();try{await loadData()}catch(e){}}
+});
+$('#aeSalvar').addEventListener('click',async()=>{
+  const e=aeAtual();if(!e)return;const nome=$('#aeNome').value.trim();if(!nome)return toast('Informe o nome');
+  const telefone=$('#aeTel').value.trim()||null;
+  if(await gravou(sb.from('empresas').update({nome,valor_hora:n2($('#aeHora').value),telefone}).eq('id',e.id),'Empresa salva')){
+    await sb.from('clientes').update({nome,telefone}).eq('id',e.cliente_id);await depoisEmpresa()}
+});
+$('#afNovo').addEventListener('submit',async ev=>{
+  ev.preventDefault();const e=aeAtual();if(!e)return;
+  const placa=normPlaca($('#afPlaca').value);if(placa.length<7)return toast('Placa inválida');
+  const tipo=$('#afTipo').value,descricao=$('#afDesc').value.trim()||(tipo==='carro'?'Carro':'Moto');
+  if(await gravou(sb.from('motos').insert({cliente_id:e.cliente_id,empresa_id:e.id,placa,tipo,descricao,modelo_id:null}),'Veículo adicionado')){
+    $('#afPlaca').value='';$('#afDesc').value='';await depoisEmpresa()}
+});
+$('#tFrota').addEventListener('click',async ev=>{
+  const b=ev.target.closest('[data-salvar],[data-excluir]');if(!b)return;const tr=b.closest('tr'),id=tr.dataset.id,v=f=>tr.querySelector(`[data-f="${f}"]`);
+  if(b.hasAttribute('data-salvar')){b.disabled=true;
+    await gravou(sb.from('motos').update({descricao:v('descricao').value.trim()||null,ativo:v('ativo').checked}).eq('id',id),'Veículo salvo')&&await depoisEmpresa();
+    b.disabled=false;return}
+  abrirFolha(0,'Excluir este veículo?','Se ele já tiver OS, fica só desativado (as OS continuam).',[['Excluir','red',async()=>{fechaFolha();
+    const {data,error}=await sb.from('motos').delete().eq('id',id).select('id');
+    if(error&&error.code==='23503'){await gravou(sb.from('motos').update({ativo:false}).eq('id',id),'Tem OS: veículo desativado')}
+    else if(error)return toast('Erro: '+error.message);else toast(data?.length?'Veículo excluído':'Sem permissão');
+    await depoisEmpresa()}]]);
+});
+$('#atNovo').addEventListener('submit',async ev=>{
+  ev.preventDefault();const e=aeAtual();if(!e)return;const tipo=$('#atTipo').value;
+  let peca_id=$('#atPeca').value,peca_nome;
+  if(peca_id==='__nova'){peca_nome=$('#atOutra').value.trim();if(!peca_nome)return toast('Informe o nome da peça');peca_id=slug(peca_nome)}
+  else peca_nome=(tipo==='carro'?PARTES_CARRO:PARTES_3D)[peca_id]||ADM.tab.find(r=>r.peca_id===peca_id&&r.tipo===tipo)?.peca_nome||peca_id;
+  const servico=$('#atServ').value.trim();if(!servico)return toast('Informe o serviço');
+  const ordem=1+Math.max(0,...ADM.tab.filter(r=>r.empresa_id===e.id&&r.tipo===tipo&&r.peca_id===peca_id).map(r=>r.ordem||0));
+  if(await gravou(sb.from('tabela_empresa').insert({empresa_id:e.id,tipo,peca_id,peca_nome,servico,preco:n2($('#atPreco').value),horas:n2($('#atHoras').value),ordem}),'Serviço adicionado à tabela')){
+    $('#atServ').value='';$('#atPreco').value=0;$('#atHoras').value=0;$('#atOutra').value='';$('#atFiltro').value=tipo;await depoisEmpresa();$('#atPeca').value=peca_id;$('#atOutraL').hidden=true}
+});
+$('#tTab').addEventListener('click',async ev=>{
+  const b=ev.target.closest('[data-salvar],[data-excluir]');if(!b)return;const tr=b.closest('tr'),id=+tr.dataset.id,v=f=>tr.querySelector(`[data-f="${f}"]`);
+  if(b.hasAttribute('data-salvar')){const servico=v('servico').value.trim();if(!servico)return toast('Informe o serviço');b.disabled=true;
+    await gravou(sb.from('tabela_empresa').update({servico,preco:n2(v('preco').value),horas:n2(v('horas').value),ativo:v('ativo').checked}).eq('id',id),'Serviço salvo')&&await depoisEmpresa();
+    b.disabled=false;return}
+  abrirFolha(0,'Excluir este serviço da tabela?','As OS já criadas não mudam.',[['Excluir','red',async()=>{fechaFolha();
+    const {data,error}=await sb.from('tabela_empresa').delete().eq('id',id).select('id');
+    toast(error?'Erro: '+error.message:(data?.length?'Serviço excluído':'Sem permissão'));await depoisEmpresa()}]]);
+});
+
 /* ---------- excluir serviços do catálogo (só administrador) ----------
    Serviço que já aparece em alguma OS não pode sumir do banco (a OS aponta para ele):
    nesse caso ele é desativado, sai do app e as OS antigas continuam intactas. */
@@ -782,7 +985,7 @@ const STS=['Aguardando aprovação','Aprovado','Em execução','Pronto','Entregu
 function renderOS(){
   $('#osT tbody').innerHTML=OS.length?OS.map(o=>`<tr><td><b>#${o.id}</b></td>
     <td>${new Date(o.created_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</td>
-    <td>${esc(o.clientes?.nome)}</td><td>${esc(o.motos?.modelos?.nome)} · ${esc(o.motos?.placa)}</td>
+    <td>${esc(o.clientes?.nome)}</td><td>${esc(o.motos?.modelos?.nome||o.motos?.descricao||'')} · ${esc(o.motos?.placa)}</td>
     <td>${esc(o.itens_os.map(i=>(i.qtd>1?i.qtd+'× ':'')+i.servico).join(', '))}</td><td class="num">${brl(o.total)}</td>
     <td><select data-os="${o.id}" aria-label="Status da OS ${o.id}">${STS.map(s=>`<option${s===o.status?' selected':''}>${s}</option>`).join('')}</select></td>
     <td><div class="acts"><button class="wa" data-send="${o.id}" aria-label="Enviar PDF da OS ${o.id}">Enviar PDF</button><button class="ghost" data-txt="${o.id}" aria-label="Enviar texto da OS ${o.id}">Texto</button><button class="ghost" data-pdf="${o.id}" aria-label="Baixar PDF da OS ${o.id}">Baixar</button>${ADMIN?`<button class="ghost del" data-del="${o.id}" aria-label="Excluir OS ${o.id}">Excluir</button>`:''}</div></td></tr>`).join('')
@@ -826,7 +1029,7 @@ function build(){
       const c=new T.Vector3();bb.getCenter(c);root.position.set(-c.x,-bb.min.y,-c.z);
       root.traverse(o=>{
         if(o.isMesh){o.castShadow=true;o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone()}
-        if(P[o.name]&&!groups[o.name]){o.userData.part=o.name;groups[o.name]=o}
+        if((P[o.name]||PARTES_3D[o.name])&&!groups[o.name]){o.userData.part=o.name;groups[o.name]=o}
       });
       scene.add(root);
       const faltam=Object.keys(P).filter(k=>!groups[k]);
